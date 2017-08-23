@@ -9,8 +9,10 @@
 #include <stdio.h>
 #include "stm32f10x_usart.h"
 
+extern  u8 usart_1_buffIndex;
+extern  u8 usart_1_Buff[254];
 
-
+static u8 FlashConfigFlag = 0;
 
 
 static void NVIC_Configuration(void)
@@ -134,3 +136,42 @@ int fgetc(FILE *f)
 
   return (int)USART_ReceiveData(DEBUG_USARTx);
 }
+
+
+
+extern void SetFlashConfigFlag(u8 flag){
+	FlashConfigFlag = flag;
+}
+extern u8   GetFlashConfigFlag(){
+	return FlashConfigFlag;
+}
+
+
+extern void Clear_Usart1_Rec(){
+	memset(usart_1_Buff,0,254);
+	usart_1_buffIndex = 0 ;
+}
+
+//串口1中断处理函数
+//配置设备参数
+//共71 字节
+//FF  AB 为头
+//结尾为配置选项目
+void USART1_IRQHandler(void){
+	if (USART_GetITStatus(USART1,USART_IT_RXNE)!=RESET){
+		 usart_1_Buff[usart_1_buffIndex] = USART_ReceiveData(USART1);
+		 usart_1_buffIndex++;
+		
+		if(usart_1_buffIndex >= 250){
+			usart_1_buffIndex = 0;
+			memset(usart_1_Buff,0,254);
+		}
+		
+		 //找包尾巴
+		if( (usart_1_Buff[usart_1_buffIndex - 71] == 0xff) && (usart_1_Buff[usart_1_buffIndex - 70] == 0xab) ){
+			SetFlashConfigFlag(1);
+		}
+	}
+}
+
+

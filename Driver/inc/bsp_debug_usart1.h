@@ -10,6 +10,9 @@
 
 #include "stm32f10x.h"
 
+
+
+
 #define DEBUG_USARTx                               USART1
 #define DEBUG_USART1_BAUDRATE                      115200
 
@@ -34,5 +37,6 @@ extern void DEBUG_USART1_Init(void);
 extern void UART_PutChar(USART_TypeDef* USARTx, uint8_t Data);
 extern void UART_PutStr (USART_TypeDef* USARTx, uint8_t *str);
 
-
+extern void SetFlashConfigFlag(u8 flag);
+extern u8   GetFlashConfigFlag();
 #endif /* BSP_BSP_DEBUG_USART1_H_ */
