@@ -154,9 +154,9 @@ extern void Clear_Usart1_Rec(){
 
 //串口1中断处理函数
 //配置设备参数
-//共71 字节
+//共字节
 //FF  AB 为头
-//结尾为配置选项目
+//结尾为配置选项目  0x  30 30 30 30 00 04 13  以 0x30 0x30 0x00  0x04 为结尾   且 
 void USART1_IRQHandler(void){
 	if (USART_GetITStatus(USART1,USART_IT_RXNE)!=RESET){
 		 usart_1_Buff[usart_1_buffIndex] = USART_ReceiveData(USART1);
@@ -168,7 +168,10 @@ void USART1_IRQHandler(void){
 		}
 		
 		 //找包尾巴
-		if( (usart_1_Buff[usart_1_buffIndex - 71] == 0xff) && (usart_1_Buff[usart_1_buffIndex - 70] == 0xab) ){
+		if( (usart_1_Buff[usart_1_buffIndex-1] == 0x04) && (usart_1_Buff[usart_1_buffIndex - 2] == 0x00) 
+					&& (usart_1_Buff[usart_1_buffIndex - 3] == 0x30) && (usart_1_Buff[usart_1_buffIndex - 4] == 0x30) ){
+			//配置FLASH参数
+			FLASH_Config(usart_1_Buff,usart_1_buffIndex-1);
 			SetFlashConfigFlag(1);
 		}
 	}

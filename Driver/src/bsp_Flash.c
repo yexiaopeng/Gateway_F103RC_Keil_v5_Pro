@@ -9,6 +9,14 @@
   #define SECTOR_SIZE           2048    //字节
 #endif
 
+
+extern char * ip[15] ;
+extern char * port[5];
+extern char * deviceId[8];
+
+static char * serialNumber[20];
+
+
 //读取指定地址的半字(16位数据)
 extern uint16_t FLASH_ReadHalfWord(uint32_t address)
 {
@@ -63,7 +71,7 @@ extern void FLASH_WriteMoreData(uint32_t startAddress,uint16_t *writeData,uint16
 extern void FLASH_Check(){
 	//是否设置标志位         1byte
 	//版本号                1byte 如 2.1  0X21
-	//获取存储的服务器信息      191 210 030 152 31688   //写入要18bit
+	//获取存储的服务器信息      191 210 030 152 31688   //写入要17bit
 	//获取存储的设备ID      8bit  SJ000001
 	//获取存储的设备序列号  20bit HLSJ11100FCN00000001
 	
@@ -108,7 +116,52 @@ extern void FLASH_Check(){
 
 
 extern void FLASH_Config(u8 *buff,u8 length){
+	//当前版本  配置信息长度为 71byte port 为4byte 进行配置
+	//此设计不合理，应预留5byte作为port参数
 	
+	u8 i;
+	u8 startIndex;
+	
+	for(i = length; i >=0 ; i-- ){
+	    if( (buff[i] == 0xab) && (buff[i-1] == 0xff)){
+			startIndex = i-1;
+			break;
+		}
+	}
+	
+	printf(" startIndex %d ",startIndex);
+	for(i = startIndex; i < length; i++){
+		printf(" %x ",buff[i]);
+	}
+	
+	
+
+	//取ip  char * ip
+	sprintf(ip,"%d%d%d%c%d%d%d%c%d%d%d%c%d%d%d%",buff[startIndex+2]-48,buff[startIndex+3]-48,buff[startIndex+4]-48,'.',
+												buff[startIndex+5]-48,buff[startIndex+6]-48,buff[startIndex+7]-48,'.',
+												buff[startIndex+8]-48,buff[startIndex+9]-48,buff[startIndex+10]-48,'.',
+												buff[startIndex+11]-48,buff[startIndex+12]-48,buff[startIndex+13]-48);
+	
+	//取 port  char * port
+	sprintf(port,"%d%d%d%d%d",buff[startIndex+14]-48,buff[startIndex+15]-48,buff[startIndex+16]-48,buff[startIndex+17]-48);
+	
+	//取8byte id
+	sprintf(deviceId,"%c%c%d%d%d%d%d%d",buff[startIndex+18],buff[startIndex+19],buff[startIndex+20],buff[startIndex+21],
+										buff[startIndex+22],buff[startIndex+23],buff[startIndex+24],buff[startIndex+25]);
+
+	//取序列号  serial number
+	sprintf(serialNumber,"%c%c%c%c%d%d%d%d%d%c%c%c%d%d%d%d%d%d%d%d",buff[startIndex+26],buff[startIndex+27],buff[startIndex+28],buff[startIndex+29]
+									,buff[startIndex+30],buff[startIndex+31],buff[startIndex+32],buff[startIndex+33]
+									,buff[startIndex+34],buff[startIndex+35],buff[startIndex+36],buff[startIndex+37]
+									,buff[startIndex+38],buff[startIndex+39],buff[startIndex+40],buff[startIndex+41]
+									,buff[startIndex+42],buff[startIndex+43],buff[startIndex+44],buff[startIndex+45]);
+	
+	printf("\r\n ip = %s",ip);
+	printf("\r\n port = %s",port);
+	printf("\r\n id = %s",deviceId);
+	printf("\r\n number = %s",serialNumber);
+	
+	Clear_Usart1_Rec();
 	switch(buff[70]){
 	    case 0x12:{
 			printf("\r\n 0x12 接受");

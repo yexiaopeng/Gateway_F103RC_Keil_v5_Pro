@@ -3,6 +3,7 @@
 #include "bsp_gsm_gprs.h"
 #include "stdio.h"
 #include "string.h"
+#include "bsp_Timer.h" 
 
 #define DEBUG  1
 
@@ -23,8 +24,7 @@ static ProtocolHeart protocolHeart;
 #define NETDATAPACKLENGTH_H_INDEX 4 
 #define NETDATAPACKLENGTH_L_INDEX 5 
 
- 
- 
+
 
 
 
@@ -119,18 +119,18 @@ static u8 Gsm_SendData(u8 * dataBuff,u16 dataLength){
 	 u8 i;
 	 char end = 0x1A;
 	uint8_t testSend=0;
-	
+	printf("\r\n 1");
 	GSM_CLEAN_RX();
-	
+	printf("\r\n 2");
 	 if( gsm_cmd("AT+CIPSEND\r",">",500) == 0)
 	{
 		
-		 
+		 printf("\r\n 3");
         for(i = 0; i < dataLength;i++){
 		USART_SendData(GSM_USARTx, dataBuff[i]);
 		while( USART_GetFlagStatus(GSM_USARTx, USART_FLAG_TXE) == RESET );
 		}
-		
+		printf("\r\n 4");
 		GSM_CLEAN_RX();
 		gsm_cmd(&end,0,100);		
 		
@@ -173,6 +173,24 @@ extern void Gsm_SendNetDataPackToServer(u8 function, u8 * data, u16 dataLength){
 	switch(function){
 		case HeartBeatFunctionType:{
 			//0x10：心跳包
+			clean_rebuff();
+			u8 dataBuff[22];
+			printf("\r\n 444444444444444444444444"); 
+			protocolHeart.function = HeartBeatFunctionType;
+			protocolHeart.length[0]  = 0x00;
+			protocolHeart.length[1]= 0x0e;
+			printf("\r\n 33333333333333333333333333"); 
+			memcpy(dataBuff,&protocolHeart,15);
+			
+			dataBuff[15] = 0x1F;
+			dataBuff[16] = 0xff;
+			dataBuff[17] = 0xff;
+			dataBuff[18] = 0xfa;
+			dataBuff[19] = 0x1f; 
+			dataBuff[20] = 0xf1;
+			dataBuff[21] = 0xaf;
+			 
+		    Gsm_SendData(dataBuff,22);		 
 		}break;
 		
 		case DeviceStateFunctionType:{
@@ -189,7 +207,7 @@ extern void Gsm_SendNetDataPackToServer(u8 function, u8 * data, u16 dataLength){
 	
 		
 		//以下为服务器应答
-		
+		//TODO  是否可以取消
 	    case ConfigFunctionType:{
 			//重新设置IP PORT
 			 ConfigFunctionTypeResponseManager(data,dataLength);
@@ -237,6 +255,12 @@ extern void Gsm_DealwithServerNetProtocolData(){
 	u8 function;//功能
 	u8 data[200];//数据变长
 	//u16 dataLength ;//
+
+	//设置标志位  表明正在处理网络应答
+	isNetWork = 1;
+
+
+
 	
 	//提取数据包
 	memcpy(addr,&dataBuff[heartIndex+6],8);
@@ -279,6 +303,9 @@ extern void Gsm_DealwithServerNetProtocolData(){
 			printf("\r\n Gsm_DealwithServerNetProtocolData 未定义指令");
 		}
 	}
+
+	//设置标志位  结束网络应答
+	isNetWork = 0;
 }
 
 

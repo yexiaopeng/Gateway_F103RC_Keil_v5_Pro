@@ -4,15 +4,26 @@
 #include "bsp_SysTick.h"
 #include "bsp_gsm_gprs.h"
 #include "bsp_protocol.h"
-
+#include "bsp_Timer.h"
 #include <string.h>
 
 
 #define		LOCALPORT	"2000"
 
 #define		SERVERIP	"120.24.49.3"
-#define		SERVERPORT	"36504"
+#define		SERVERPORT	"44486"
 
+
+char * ip[15];
+char * port[5];
+char * deviceId[8];
+
+//全局变量 
+u8 usart_1_buffIndex;
+u8 usart_1_Buff[254];
+
+//读取FLASH
+static u16 flashBuff[71];
 
 const char *TESTBUFF1="\r\n1.秉火GSM模块TCP数据上传功能测试";
 
@@ -41,6 +52,9 @@ static void App_Init(){
 	GSM_PWRKEY_Init();
 	
 	Start_Led_Init();
+
+	
+	isNetWork = 1;
 }
 
 static unsigned char ch = 0x25;
@@ -48,17 +62,52 @@ u8 buff[37] = { 0xFA,0xF1 ,0x1F ,0xAF ,0x00 ,0x1D ,0x31 ,0x32 ,0x33 ,0x34 ,0x35 
 			   0x37 ,0x38 ,0x01 ,0x31 ,0x39 ,0x32 ,0x31 ,0x36 ,0x38 ,0x30 ,0x30 ,0x30 ,0x30 ,0x30 ,0x31,
                0x38 ,0x38 ,0x38 ,0x38 ,0xFF ,0xFF ,0xFA ,0x1F ,0xF1 ,0xAF};
 static void App_Manager(){
- 
+	//修改中断向量表位置
+    SCB->VTOR = FLASH_BASE| 0x10000;
 	Work_Led_Open(); 
 	 
 #if DEBUG
       SetDeviceAddr(DeviceAddr);
 #endif	
 	
-	printf("\r\n 中莱小网关 ");
-	 
-	printf("\r\n 步骤一 启动GPRS ");
+	printf("\r\n @@ 中莱小网关 ");
+	
+	printf("\r\n @@ Read Flash Config");
+
+	
+//	Timer2_Init_Config();
+//	isNetWork = 1;	
+//	while(1);
+	
+	
+	flashBuff[1] = 0X5612;
+	FLASH_WriteMoreData(0x08000000+2*1024*20,flashBuff,2);
+	//FLASH_ReadMoreData(0x08000000+2*1024*20,flashBuff,1);
+	
+	// while(1);
+	if(0x3c == flashBuff[1]){
+		//已经配置
+		//读取数据  配置参数	
+	}else{
+		//未配置
+		//while( GetFlashConfigFlag() != 1);
+		//配置参数
+		
+		//重启
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	printf("\r\n @@ 启动GPRS ");
   
+  //  FLASH_Check();
+	
  
 	
 	GSM_POWER_Close();
@@ -221,14 +270,27 @@ static void App_Manager(){
 	}
  
     GSM_CLEAN_RX();
-	
+
+	//开启定时器， 准备发送心跳包
+	Timer2_Init_Config();
+	isNetWork = 0;
+	 
 	while(1){
     
          if(GetIsReceiveGsmData() != 0x00){
-			 SetIsReceiveGsmData(0);
-			  printf("\r\n Gsm_DealwithServerNetProtocolData");
-			 //处理GSM数据
-			 Gsm_DealwithServerNetProtocolData();
+			if(GetIsReceiveGsmData() == 1){
+				//处理网络中断
+				SetIsReceiveGsmData(0);
+				 printf("\r\n Gsm_DealwithServerNetProtocolData");
+				//处理GSM数据
+				Gsm_DealwithServerNetProtocolData();
+			}else if(GetIsReceiveGsmData() == 2){
+				SetIsReceiveGsmData(0);
+				Gsm_SendNetDataPackToServer(HeartBeatFunctionType,0,0);
+			}
+
+		 
+			
 		 } 
   }
 }

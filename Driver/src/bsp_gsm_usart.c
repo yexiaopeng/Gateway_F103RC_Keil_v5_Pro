@@ -286,12 +286,13 @@ void GSM_USART_printf(char *Data,...)
 
 
 
-
+// isReceiveGsmData 列表
+// 0  -- 不处理
+//1   -- 网路应答
+//2   -- 心跳包
 extern  void SetIsReceiveGsmData(u8 isReceive){
-	if(isReceive != 0)
-		isReceiveGsmData = 1;
-	else
-		isReceiveGsmData = 0;
+	 
+	isReceiveGsmData = isReceive;
 }
 
 

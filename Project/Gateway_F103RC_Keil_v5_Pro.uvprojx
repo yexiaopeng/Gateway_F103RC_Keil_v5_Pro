@@ -272,8 +272,8 @@
               </OCR_RVCT3>
               <OCR_RVCT4>
                 <Type>1</Type>
-                <StartAddress>0x8000000</StartAddress>
-                <Size>0x40000</Size>
+                <StartAddress>0x8010000</StartAddress>
+                <Size>0x30000</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -463,6 +463,26 @@
               <FileName>bsp_start_led.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Driver\src\bsp_start_led.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_Flash.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Driver\inc\bsp_Flash.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_Flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Driver\src\bsp_Flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_Timer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Driver\src\bsp_Timer.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_Timer.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Driver\inc\bsp_Timer.h</FilePath>
             </File>
           </Files>
         </Group>
