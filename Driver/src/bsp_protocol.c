@@ -43,6 +43,8 @@ static void OverRegisteredFunctionTypeManager(u8 * addr,u8 * data, u16 length);
 //******************应答和上传服务器
 extern  void ConfigFunctionTypeResponseManager();
 
+static void InverterDataPackResponseManager(u8 * data, u16 dataLength);
+
 
 
 
@@ -104,7 +106,7 @@ extern u8 Gsm_CopyNetDataToDataBuff(u8 * netData,u16 netDataLength){
 	dataLength +=  dataBuff[heartIndex+5];
 	 
 	if( (dataLength + 8) != (netDataLength - heartIndex)  ){
-		printf("\r\n length error %d %d ",dataLength,netDataLength - heartIndex);
+		//printf("\r\n length error %d %d ",dataLength,netDataLength - heartIndex);
 		return 3;
 	}
 	
@@ -119,18 +121,14 @@ static u8 Gsm_SendData(u8 * dataBuff,u16 dataLength){
 	 u8 i;
 	 char end = 0x1A;
 	uint8_t testSend=0;
-	printf("\r\n 1");
 	GSM_CLEAN_RX();
-	printf("\r\n 2");
 	 if( gsm_cmd("AT+CIPSEND\r",">",500) == 0)
 	{
-		
-		 printf("\r\n 3");
         for(i = 0; i < dataLength;i++){
 		USART_SendData(GSM_USARTx, dataBuff[i]);
 		while( USART_GetFlagStatus(GSM_USARTx, USART_FLAG_TXE) == RESET );
 		}
-		printf("\r\n 4");
+	
 		GSM_CLEAN_RX();
 		gsm_cmd(&end,0,100);		
 		
@@ -175,21 +173,17 @@ extern void Gsm_SendNetDataPackToServer(u8 function, u8 * data, u16 dataLength){
 			//0x10：心跳包
 			clean_rebuff();
 			u8 dataBuff[22];
-			printf("\r\n 444444444444444444444444"); 
 			protocolHeart.function = HeartBeatFunctionType;
 			protocolHeart.length[0]  = 0x00;
-			protocolHeart.length[1]= 0x0e;
-			printf("\r\n 33333333333333333333333333"); 
-			memcpy(dataBuff,&protocolHeart,15);
-			
-			dataBuff[15] = 0x1F;
+			protocolHeart.length[1]= 0x0e;			 
+			memcpy(dataBuff,&protocolHeart,15);			
+			dataBuff[15] =  gsm_gprs_Get_SignalStrength();//信号强度
 			dataBuff[16] = 0xff;
 			dataBuff[17] = 0xff;
 			dataBuff[18] = 0xfa;
 			dataBuff[19] = 0x1f; 
 			dataBuff[20] = 0xf1;
 			dataBuff[21] = 0xaf;
-			 
 		    Gsm_SendData(dataBuff,22);		 
 		}break;
 		
@@ -199,6 +193,9 @@ extern void Gsm_SendNetDataPackToServer(u8 function, u8 * data, u16 dataLength){
 		
 		case InverterDataPackFunctionType:{
 		    //0x50：逆变器数据包
+		    //InverterDataPackResponseManager(data,dataLength);
+		    printf("\r\n InverterDataPackFunctionType");
+		    InverterDataPackResponseManager(data,dataLength);
 		}break;
 		
 		case DeviceErrorFunctionType:{
@@ -235,7 +232,7 @@ extern void Gsm_SendNetDataPackToServer(u8 function, u8 * data, u16 dataLength){
 		}break;
 		
 		default:{
-			printf("\r\n Gsm_SendNetDataPackToServer 未定义指令");
+			printf("\r\n Gsm_SendNetDataPackToServer 未定义指令 0X%02X",function);
 		}
 	}
 }
@@ -265,7 +262,9 @@ extern void Gsm_DealwithServerNetProtocolData(){
 	//提取数据包
 	memcpy(addr,&dataBuff[heartIndex+6],8);
 	function = dataBuff[heartIndex+14];
-	memcpy(data, &dataBuff[heartIndex+15],dataLength-13);  
+	memcpy(data, &dataBuff[heartIndex+15],dataLength-13);  // -13 采集器地址8     数据长度2     CRC2 命令1
+
+	 
 	
 	switch(function){
 		case ConfigFunctionType:{
@@ -334,26 +333,81 @@ static void ConfigFunctionTypeManager(u8 * addr,u8 * data, u16 length){
 		printf("\r\n %d ",data[i]);
 	}
 #endif	
-	
-	
+	char ip[16];//默认为 xxx.xxx.xxx.xxx 
+	char port[6];
 	
 	//TODO  转换IP和PORT 
 	
 	//00: 应答
 	ConfigFunctionTypeResponseManager(0,0);
 	
-	
-	//01 积累新的ip和PORT
-	
-    //02：写入内存
-	
-	
-	//03：重新连接 （是否需要再次重启？？？）
+	if(length < 16){
+		return ;
+	}
+
 
 	
+	//01 提取新的ip和PORT      192.016.001.002  有效
+	ip[3]  = '.';
+	ip[7]  = '.';
+	ip[11] = '.';
 	
+	ip[0] = data[0];
+	ip[1] = data[1];
+	ip[2] = data[2];
+
+	ip[4] = data[3];
+	ip[5] = data[4];
+	ip[6] = data[5];
+
+	ip[8] = data[6];
+	ip[9] = data[7];
+	ip[10] = data[8];
+
+	ip[12] = data[9];
+	ip[13] = data[10];
+	ip[14] = data[11];
+
+	ip[15] = '\0';
 	
+
+
+ 	//port  判断4 or 5 
+ 	if(length == 16){
+ 		//port length 4
+ 		sprintf(port,"%c%c%c%c",data[12],data[13],data[14],data[15]);
+		port[4] = '\0';
+ 	}else{
+ 		sprintf(port,"%c%c%c%c%c",data[12],data[13],data[14],data[15],data[16]);
+		port[5] = '\0';
+ 	}
+
+    //02：写入内存
+	FLASH_WriteIpConfig(ip, port);
 	
+	//03：重新连接 （是否需要再次重启？？？）
+	
+	Delay_ms(1000);
+	gsm_gprs_link_close();	
+
+	
+	Delay_ms(100);
+	gsm_gprs_shut_close();
+
+	Delay_ms(5000);
+	 
+	//信号线拉低1.5s至3s关机
+    //超过3s重新开机	
+	GSM_PWRKEY_Open();
+	Delay_ms(1000);
+	Delay_ms(1000);
+	GSM_PWRKEY_Close();
+	 
+	Delay_ms(5000);
+	
+    __set_FAULTMASK(1);   /* 关闭所有中断*/  
+	NVIC_SystemReset();   /* 系统复位 */
+
 }
  
 extern  void ConfigFunctionTypeResponseManager(){
@@ -583,6 +637,85 @@ static void OverRegisteredFunctionTypeManager(u8 * addr,u8 * data, u16 length){
 
 //**************************  发送应答处理函数
 
+
+
+static void InverterDataPackResponseManager(u8 * data, u16 dataLength){
+#if 1
+	//此为测试数据使用
+	//数据为自定义数据
+
+	//FA F1 1F AF 00 32 
+	//31 32 33 34 35 36 37 38 50 xx
+	//xx 04 21
+	//00 00 00 00 00 00 01 00 00 00 01
+	//00 00 00 01 00 00 00 01 00 00 00 00
+	//00 00 00 01 00 00 00 01 FF FF
+	//FF FF FA 1F F1 AF
+
+
+	clean_rebuff();
+	u8 dataBuff[58];
+	protocolHeart.function = InverterDataPackFunctionType;
+	protocolHeart.length[0]  = 0x00;
+	protocolHeart.length[1]= 0x32;			 
+	memcpy(dataBuff,&protocolHeart,15); 		
+	dataBuff[15] = 0xff;
+	dataBuff[16] = 0x01;
+	dataBuff[17] = 0x04;
+	dataBuff[18] = 0x21;
+
+	//00 00 00 00 00 00 01 00
+	dataBuff[19] = 0x00; 
+	dataBuff[20] = 0x00;
+	dataBuff[21] = 0x00;
+	dataBuff[22] = 0x00;
+	dataBuff[23] = 0x00;
+	dataBuff[24] = 0x00;
+	dataBuff[25] = 0x01;
+	dataBuff[26] = 0x00;
+	//00 00 01 00 00 00 01 00
+	dataBuff[27] = 0x00; 
+	dataBuff[28] = 0x00;
+	dataBuff[29] = 0x01;
+	dataBuff[30] = 0x00;
+	dataBuff[31] = 0x00;
+	dataBuff[32] = 0x00;
+	dataBuff[33] = 0x01;
+	dataBuff[34] = 0x00;
+
+	//00 00 01 00 00 00 00 00
+	dataBuff[35] = 0x00; 
+	dataBuff[36] = 0x00;
+	dataBuff[37] = 0x01;
+	dataBuff[38] = 0x00;
+	dataBuff[39] = 0x00;
+	dataBuff[40] = 0x00;
+	dataBuff[41] = 0x00;
+	dataBuff[42] = 0x00;
+	//00 00 01 00 00 00 01 FF
+	dataBuff[43] = 0x00; 
+	dataBuff[44] = 0x00;
+	dataBuff[45] = 0x01;
+	dataBuff[46] = 0x00;
+	dataBuff[47] = 0x00;
+	dataBuff[48] = 0x00;
+	dataBuff[49] = 0x01;
+	dataBuff[50] = 0xff;
+	//ff
+	dataBuff[51] = 0xff;
+
+	//FF FF FA 1F F1 AF
+	dataBuff[52] = 0xff; 
+	dataBuff[53] = 0xff;
+	dataBuff[54] = 0xfa;
+	dataBuff[55] = 0x1f;
+	dataBuff[56] = 0xf1;
+	dataBuff[57] = 0xaf;
+
+	Gsm_SendData(dataBuff,58);
+	
+#endif
+}
 
 
 

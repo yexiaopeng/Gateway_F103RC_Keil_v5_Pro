@@ -1,5 +1,6 @@
 #include "bsp_gsm_usart.h"
 #include "bsp_protocol.h"
+#include "bsp_Timer.h"
 
 #include <stdarg.h>
 
@@ -162,6 +163,10 @@ void bsp_GSM_USART_IRQHandler(void)
 			
 			 //接受服务器数据包结束位后  修改标志位
             //在主循环中做处理  由于uart_p++
+            if (isNetWork == 1){
+				//防止处理应答过程中  有新的指令
+				return;
+			}
             if(uart_p >= 33 )
 			{    //数据长度大于33
 				if( (uart_buff[uart_p -4] == 0XFA) && (uart_buff[uart_p -3] == 0X1F) &&
@@ -290,6 +295,8 @@ void GSM_USART_printf(char *Data,...)
 // 0  -- 不处理
 //1   -- 网路应答
 //2   -- 心跳包
+//3   -- 串口1配置FLASH
+//4  --  调试服务器用  过后注释
 extern  void SetIsReceiveGsmData(u8 isReceive){
 	 
 	isReceiveGsmData = isReceive;

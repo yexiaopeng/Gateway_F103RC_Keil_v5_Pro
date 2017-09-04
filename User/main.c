@@ -6,32 +6,27 @@
 #include "bsp_protocol.h"
 #include "bsp_Timer.h"
 #include <string.h>
+#include "bsp_Flash.h"
 
 
 #define		LOCALPORT	"2000"
 
-#define		SERVERIP	"120.24.49.3"
-#define		SERVERPORT	"44486"
 
 
-char * ip[15];
-char * port[5];
-char * deviceId[8];
-
-//全局变量 
-u8 usart_1_buffIndex;
-u8 usart_1_Buff[254];
 
 //读取FLASH
-static u16 flashBuff[71];
+//static u16 flashBuff[71];
 
-const char *TESTBUFF1="\r\n1.秉火GSM模块TCP数据上传功能测试";
+
 
 static uint8_t testCard = 0;
 
 #define DEBUG 1
-static u8 DeviceAddr[8] = {0X31,0X32,0X33,0X34,0X35,0X36,0X37,0X38}; 
- 
+
+static char staticip[16];
+static char staticport[6];
+
+
 /*
  * 系统软件复位
  */
@@ -57,56 +52,82 @@ static void App_Init(){
 	isNetWork = 1;
 }
 
-static unsigned char ch = 0x25;
-u8 buff[37] = { 0xFA,0xF1 ,0x1F ,0xAF ,0x00 ,0x1D ,0x31 ,0x32 ,0x33 ,0x34 ,0x35 ,0x36,
-			   0x37 ,0x38 ,0x01 ,0x31 ,0x39 ,0x32 ,0x31 ,0x36 ,0x38 ,0x30 ,0x30 ,0x30 ,0x30 ,0x30 ,0x31,
-               0x38 ,0x38 ,0x38 ,0x38 ,0xFF ,0xFF ,0xFA ,0x1F ,0xF1 ,0xAF};
+
+
 static void App_Manager(){
+
 	//修改中断向量表位置
     SCB->VTOR = FLASH_BASE| 0x10000;
 	Work_Led_Open(); 
 	 
-#if DEBUG
-      SetDeviceAddr(DeviceAddr);
-#endif	
 	
 	printf("\r\n @@ 中莱小网关 ");
 	
 	printf("\r\n @@ Read Flash Config");
 
-	
-//	Timer2_Init_Config();
-//	isNetWork = 1;	
-//	while(1);
-	
-	
-	flashBuff[1] = 0X5612;
-	FLASH_WriteMoreData(0x08000000+2*1024*20,flashBuff,2);
-	//FLASH_ReadMoreData(0x08000000+2*1024*20,flashBuff,1);
-	
-	// while(1);
-	if(0x3c == flashBuff[1]){
-		//已经配置
-		//读取数据  配置参数	
-	}else{
+	FLASH_ReadDeviceAllConfig(ip,port, deviceId, serialNumber);
+
+	while(ip[0] == 0xff){
 		//未配置
-		//while( GetFlashConfigFlag() != 1);
-		//配置参数
+		printf("\r\n 请配置参数 ");
+		Delay_ms(1000);
+		if( GetIsReceiveGsmData() == 3 ){
+				//在运行过程处理串口FLASH配置
+				isNetWork = 1;
+				SetIsReceiveGsmData(0);
+				FLASH_USART_ConfigDeviceParameter(usart_1_Buff,71);
+				Clear_Usart1_Rec();
+				printf("\r\n 配置参数成功   设备重启 r\n");
+				// 重启设备
+				Gprs_Led_Close();
+				printf("\r\n 更新FLASH   设备重启 r\n");
+				GSM_DELAY(1000); 
+				printf("\nIP链接断开\n");
+				GSM_DELAY(100);
+				gsm_gprs_link_close();	
+				
+				printf("\n关闭场景\n");
+				GSM_DELAY(100);
+				gsm_gprs_shut_close();
+				
+				GSM_PWRKEY_Open();
+				Delay_ms(1000);
+				Delay_ms(1000);
+				GSM_PWRKEY_Close();
+				 
+				Delay_ms(5000);
+				 
+				Soft_Reset();
 		
-		//重启
+				isNetWork = 0;
+			}
+	}
+
+	printf("\r\n 参数配置完成 \r\n ip = ");
+
+	memcpy(staticip,ip, 15);
+	staticip[15] = '\0';
+	
+	printf("\r\n %s ",staticip);
+	Delay_ms(20);
+
+
+	if(port[0] == 0){
+		memcpy(staticport,&port[1], 4);
+		staticport[4] = '\0';
+	}else{
+		memcpy(staticport,port, 5);
+		staticport[5] = '\0';
 	}
 	
-	
-	
-	
-	
-	
-	
-	
-	
+	printf("\r\n port = %s",staticport);
+
+	SetDeviceAddr(deviceId);
+
+
+
 	printf("\r\n @@ 启动GPRS ");
   
-  //  FLASH_Check();
 	
  
 	
@@ -211,10 +232,10 @@ static void App_Manager(){
 	NVIC_SystemReset();   /* 系统复位 */
 		while(1);
 	}
-	
+
 	printf("\n尝试建立TCP链接，请耐心等待...\n");
 	
-	if(gsm_gprs_tcp_link(LOCALPORT,SERVERIP,SERVERPORT)!=GSM_TRUE)
+	if(gsm_gprs_tcp_link(LOCALPORT,staticip,staticport)!=GSM_TRUE)
 	{
 		printf("\r\n TCP链接失败，请检测正确设置各个模块\r\n");
 		GSM_DELAY(1000); 
@@ -225,7 +246,31 @@ static void App_Manager(){
 		printf("\n 关闭场景\n");
 		GSM_DELAY(100);
 		gsm_gprs_shut_close();
-		printf("\r\n 5s后自动重启\r\n");
+
+
+
+		while(1){
+			printf("\n 请重新启动设备 或 检查 ip设置\n");
+			GSM_DELAY(1000);
+			if (GetIsReceiveGsmData()==3)
+			{
+			 	SetIsReceiveGsmData(0);
+				FLASH_USART_ConfigDeviceParameter(usart_1_Buff,71);
+				Clear_Usart1_Rec();
+				printf("\n 修改完成 重启\n");		
+				GSM_PWRKEY_Open();
+				Delay_ms(1000);
+				Delay_ms(1000);
+				GSM_PWRKEY_Close();
+				 
+				Delay_ms(5000);
+				 
+				Soft_Reset();
+			}
+		}
+
+
+		
 		
 		GSM_PWRKEY_Open();
 		Delay_ms(1000);
@@ -241,9 +286,16 @@ static void App_Manager(){
 	printf("\r\n 连接成功....\n");
 	GSM_CLEAN_RX();
 	
-	printf("\r\n连接成功,尝试发送数据...\n");	
+	printf("\r\n连接成功,尝试发送心跳包...\n");	
+
+	Gsm_SendNetDataPackToServer(HeartBeatFunctionType,0,0);
+
+
+	
 	
     GSM_DELAY(1000);	
+
+#if 0	
 	if(gsm_gprs_send(TESTBUFF1)!=GSM_TRUE)
 	{
 		Gprs_Led_Close();
@@ -268,7 +320,10 @@ static void App_Manager(){
 		
 		while(1);
 	}
- 
+
+#endif	
+
+	
     GSM_CLEAN_RX();
 
 	//开启定时器， 准备发送心跳包
@@ -281,16 +336,46 @@ static void App_Manager(){
 			if(GetIsReceiveGsmData() == 1){
 				//处理网络中断
 				SetIsReceiveGsmData(0);
-				 printf("\r\n Gsm_DealwithServerNetProtocolData");
+				 printf("\r\n 接受服务器指令  开始处理");
 				//处理GSM数据
 				Gsm_DealwithServerNetProtocolData();
 			}else if(GetIsReceiveGsmData() == 2){
 				SetIsReceiveGsmData(0);
 				Gsm_SendNetDataPackToServer(HeartBeatFunctionType,0,0);
-			}
+			}else if( GetIsReceiveGsmData() == 3 ){
+				//在运行过程处理串口FLASH配置
+				isNetWork = 1;
+				SetIsReceiveGsmData(0);
+				FLASH_USART_ConfigDeviceParameter(usart_1_Buff,71);
+				Clear_Usart1_Rec();
+				// 重启设备
 
-		 
-			
+				
+				Gprs_Led_Close();
+				printf("\r\n 更新FLASH   设备重启 r\n");
+				GSM_DELAY(1000); 
+				
+				
+				
+				GSM_PWRKEY_Open();
+				Delay_ms(1000);
+				Delay_ms(1000);
+				GSM_PWRKEY_Close();
+				 
+				Delay_ms(5000);
+				 
+				Soft_Reset();
+		
+				isNetWork = 0;
+			}else if( GetIsReceiveGsmData() == 4 ){
+				//此处为服务器测试使用 
+				//实际情况有改
+				isNetWork = 1;
+				SetIsReceiveGsmData(0);
+				printf("\r\n 发送采集器数据包");
+				Gsm_SendNetDataPackToServer(InverterDataPackFunctionType,0,0);
+				isNetWork = 0;
+			}
 		 } 
   }
 }
@@ -306,3 +391,6 @@ int main(){
 	
 	return 0;
 }
+
+
+

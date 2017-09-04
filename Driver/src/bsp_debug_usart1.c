@@ -1,7 +1,7 @@
 /*
  * bsp_debug_usart1.c
  *
- *  Created on: 2017Äê8ÔÂ8ÈÕ
+ *  Created on: 2017å¹´8æœˆ8æ—¥
  *      Author: Asuro
  */
 
@@ -9,8 +9,14 @@
 #include <stdio.h>
 #include "stm32f10x_usart.h"
 
-extern  u8 usart_1_buffIndex;
-extern  u8 usart_1_Buff[254];
+
+
+//å…¨å±€å˜é‡ 
+u8 usart_1_buffIndex;
+u8 usart_1_Buff[254];
+
+char flashConcifgBuff[72];
+
 
 static u8 FlashConfigFlag = 0;
 
@@ -18,74 +24,74 @@ static u8 FlashConfigFlag = 0;
 static void NVIC_Configuration(void)
 {
 	NVIC_InitTypeDef NVIC_InitStructure;
-	 /* Ç¶Ì×ÏòÁ¿ÖĞ¶Ï¿ØÖÆÆ÷×éÑ¡Ôñ */
+	 /* åµŒå¥—å‘é‡ä¸­æ–­æ§åˆ¶å™¨ç»„é€‰æ‹© */
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
-   /* ÅäÖÃUSARTÎªÖĞ¶ÏÔ´ */
+   /* é…ç½®USARTä¸ºä¸­æ–­æº */
 	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
-	 /* ÇÀ¶ÏÓÅÏÈ¼¶Îª0 */
+	 /* æŠ¢æ–­ä¼˜å…ˆçº§ä¸º0 */
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	 /* ×ÓÓÅÏÈ¼¶Îª1 */
+	 /* å­ä¼˜å…ˆçº§ä¸º1 */
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-	 /* Ê¹ÄÜÖĞ¶Ï */
+	 /* ä½¿èƒ½ä¸­æ–­ */
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	 /* ³õÊ¼»¯ÅäÖÃNVIC */
+	 /* åˆå§‹åŒ–é…ç½®NVIC */
 	NVIC_Init(&NVIC_InitStructure);
 }
 
 extern void DEBUG_USART1_Init(void){
-	/* ¶¨ÒåIOÓ²¼ş³õÊ¼»¯½á¹¹Ìå±äÁ¿ */
+	/* å®šä¹‰IOç¡¬ä»¶åˆå§‹åŒ–ç»“æ„ä½“å˜é‡ */
 	GPIO_InitTypeDef GPIO_InitStructure;
-	/* ¶¨ÒåUSART³õÊ¼»¯½á¹¹Ìå±äÁ¿ */
+	/* å®šä¹‰USARTåˆå§‹åŒ–ç»“æ„ä½“å˜é‡ */
 	USART_InitTypeDef USART_InitStructure;
 
 
 	NVIC_Configuration();
 
-	/* Ê¹ÄÜUSARTÊ±ÖÓ */
+	/* ä½¿èƒ½USARTæ—¶é’Ÿ */
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1,ENABLE);
-	/* Ê¹ÄÜUSART¹¦ÄÜGPIOÊ±ÖÓ */
+	/* ä½¿èƒ½USARTåŠŸèƒ½GPIOæ—¶é’Ÿ */
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO,ENABLE);
 
-	/* µ÷ÊÔUSART¹¦ÄÜGPIO³õÊ¼»¯ */
-	/* Éè¶¨USART·¢ËÍ¶ÔÓ¦IO±àºÅ */
+	/* è°ƒè¯•USARTåŠŸèƒ½GPIOåˆå§‹åŒ– */
+	/* è®¾å®šUSARTå‘é€å¯¹åº”IOç¼–å· */
 	GPIO_InitStructure.GPIO_Pin =  DEBUG_USART1_TX_PIN;
-	/* Éè¶¨USART·¢ËÍ¶ÔÓ¦IOÄ£Ê½£º¸´ÓÃÍÆÍìÊä³ö */
+	/* è®¾å®šUSARTå‘é€å¯¹åº”IOæ¨¡å¼ï¼šå¤ç”¨æ¨æŒ½è¾“å‡º */
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	/* Éè¶¨USART·¢ËÍ¶ÔÓ¦IO×î´ó²Ù×÷ËÙ¶È £ºGPIO_Speed_50MHz */
+	/* è®¾å®šUSARTå‘é€å¯¹åº”IOæœ€å¤§æ“ä½œé€Ÿåº¦ ï¼šGPIO_Speed_50MHz */
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	/* ³õÊ¼»¯USART·¢ËÍ¶ÔÓ¦IO */
+	/* åˆå§‹åŒ–USARTå‘é€å¯¹åº”IO */
 	GPIO_Init(DEBUG_USART1_TX_PORT, &GPIO_InitStructure);
 
-	/* Éè¶¨USART½ÓÊÕ¶ÔÓ¦IO±àºÅ */
+	/* è®¾å®šUSARTæ¥æ”¶å¯¹åº”IOç¼–å· */
 	GPIO_InitStructure.GPIO_Pin = DEBUG_USART1_RX_PIN;
-	/* Éè¶¨USART·¢ËÍ¶ÔÓ¦IOÄ£Ê½£º¸¡¿ÕÊäÈë */
+	/* è®¾å®šUSARTå‘é€å¯¹åº”IOæ¨¡å¼ï¼šæµ®ç©ºè¾“å…¥ */
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	/* ÆäËûÃ»ÓĞÖØĞÂ¸³ÖµµÄ³ÉÔ±Ê¹ÓÃÓë´®¿Ú·¢ËÍÏàÍ¬ÅäÖÃ */
-	/* ³õÊ¼»¯USART½ÓÊÕ¶ÔÓ¦IO */
+	/* å…¶ä»–æ²¡æœ‰é‡æ–°èµ‹å€¼çš„æˆå‘˜ä½¿ç”¨ä¸ä¸²å£å‘é€ç›¸åŒé…ç½® */
+	/* åˆå§‹åŒ–USARTæ¥æ”¶å¯¹åº”IO */
 	GPIO_Init(DEBUG_USART1_RX_PORT, &GPIO_InitStructure);
 
-	/* USART¹¤×÷»·¾³ÅäÖÃ */
-	/* USART²¨ÌØÂÊ:115200 */
+	/* USARTå·¥ä½œç¯å¢ƒé…ç½® */
+	/* USARTæ³¢ç‰¹ç‡:115200 */
 	USART_InitStructure.USART_BaudRate = DEBUG_USART1_BAUDRATE;
-	/* USART×Ö³¤(ÓĞĞ§Î»)£º8Î» */
+	/* USARTå­—é•¿(æœ‰æ•ˆä½)ï¼š8ä½ */
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-	/* USARTÍ£Ö¹Î»£º1Î» */
+	/* USARTåœæ­¢ä½ï¼š1ä½ */
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
-	/* USARTĞ£ÑéÎ»£ºÎŞ */
+	/* USARTæ ¡éªŒä½ï¼šæ—  */
 	USART_InitStructure.USART_Parity = USART_Parity_No ;
-	/* USARTÓ²¼şÊı¾İÁ÷¿ØÖÆ(Ó²¼şĞÅºÅ¿ØÖÆ´«ÊäÍ£Ö¹)£ºÎŞ */
+	/* USARTç¡¬ä»¶æ•°æ®æµæ§åˆ¶(ç¡¬ä»¶ä¿¡å·æ§åˆ¶ä¼ è¾“åœæ­¢)ï¼šæ—  */
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	/* USART¹¤×÷Ä£Ê½Ê¹ÄÜ£ºÔÊĞí½ÓÊÕºÍ·¢ËÍ */
+	/* USARTå·¥ä½œæ¨¡å¼ä½¿èƒ½ï¼šå…è®¸æ¥æ”¶å’Œå‘é€ */
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-	/* ³õÊ¼»¯USART */
+	/* åˆå§‹åŒ–USART */
 	USART_Init(USART1, &USART_InitStructure);
 
-	/* Ê¹ÄÜ½ÓÊÕÖĞ¶Ï */
+	/* ä½¿èƒ½æ¥æ”¶ä¸­æ–­ */
 		USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
-	/* Ê¹ÄÜUSART */
+	/* ä½¿èƒ½USART */
 	USART_Cmd(USART1, ENABLE);
 
-	/* Çå³ı·¢ËÍÍê³É±êÖ¾ */
+	/* æ¸…é™¤å‘é€å®Œæˆæ ‡å¿— */
 	USART_ClearFlag(USART1, USART_FLAG_TC|USART_FLAG_TXE|USART_FLAG_RXNE);
 
 }
@@ -107,44 +113,48 @@ extern void UART_PutStr (USART_TypeDef* USARTx, uint8_t *str)
 }
 
 /**
-  * º¯Êı¹¦ÄÜ: ÖØ¶¨Ïòc¿âº¯Êıprintfµ½USARTx
-  * ÊäÈë²ÎÊı: ÎŞ
-  * ·µ »Ø Öµ: ÎŞ
-  * Ëµ    Ã÷£ºÎŞ
+  * å‡½æ•°åŠŸèƒ½: é‡å®šå‘cåº“å‡½æ•°printfåˆ°USARTx
+  * è¾“å…¥å‚æ•°: æ— 
+  * è¿” å› å€¼: æ— 
+  * è¯´    æ˜ï¼šæ— 
   */
 int fputc(int ch, FILE *f)
 {
-  /* ·¢ËÍÒ»¸ö×Ö½ÚÊı¾İµ½µ÷ÊÔ´®¿Ú */
+  /* å‘é€ä¸€ä¸ªå­—èŠ‚æ•°æ®åˆ°è°ƒè¯•ä¸²å£ */
   USART_SendData(DEBUG_USARTx, (uint8_t) ch);
 
-  /* µÈ´ı´®¿ÚÊı¾İ·¢ËÍÍê±Ï */
+  /* ç­‰å¾…ä¸²å£æ•°æ®å‘é€å®Œæ¯• */
   while (USART_GetFlagStatus(DEBUG_USARTx, USART_FLAG_TXE) == RESET);
 
   return (ch);
 }
 
 /**
-  * º¯Êı¹¦ÄÜ: ÖØ¶¨Ïòc¿âº¯Êıgetchar,scanfµ½USARTx
-  * ÊäÈë²ÎÊı: ÎŞ
-  * ·µ »Ø Öµ: ÎŞ
-  * Ëµ    Ã÷£ºÎŞ
+  * å‡½æ•°åŠŸèƒ½: é‡å®šå‘cåº“å‡½æ•°getchar,scanfåˆ°USARTx
+  * è¾“å…¥å‚æ•°: æ— 
+  * è¿” å› å€¼: æ— 
+  * è¯´    æ˜ï¼šæ— 
   */
 int fgetc(FILE *f)
 {
-  /* µÈ´ı´®¿ÚÊäÈëÊı¾İ */
+  /* ç­‰å¾…ä¸²å£è¾“å…¥æ•°æ® */
   while (USART_GetFlagStatus(DEBUG_USARTx, USART_FLAG_RXNE) == RESET);
 
   return (int)USART_ReceiveData(DEBUG_USARTx);
 }
 
 
-
-extern void SetFlashConfigFlag(u8 flag){
-	FlashConfigFlag = flag;
-}
-extern u8   GetFlashConfigFlag(){
-	return FlashConfigFlag;
-}
+/*
+	1  -- å¤„ç†ç½‘ç»œä¸­æ–­
+	2  -- å…ˆæœåŠ¡å™¨å‘åŒ…
+	3  -- å¤„ç†ä¸²å£FLASHé…ç½®
+*/
+//extern void SetFlashConfigFlag(u8 flag){
+//	FlashConfigFlag = flag;
+//}
+//extern u8   GetFlashConfigFlag(){
+//	return FlashConfigFlag;
+//}
 
 
 extern void Clear_Usart1_Rec(){
@@ -152,28 +162,57 @@ extern void Clear_Usart1_Rec(){
 	usart_1_buffIndex = 0 ;
 }
 
-//´®¿Ú1ÖĞ¶Ï´¦Àíº¯Êı
-//ÅäÖÃÉè±¸²ÎÊı
-//¹²×Ö½Ú
-//FF  AB ÎªÍ·
-//½áÎ²ÎªÅäÖÃÑ¡ÏîÄ¿  0x  30 30 30 30 00 04 13  ÒÔ 0x30 0x30 0x00  0x04 Îª½áÎ²   ÇÒ 
+//ä¸²å£1ä¸­æ–­å¤„ç†å‡½æ•°
+//é…ç½®è®¾å¤‡å‚æ•°
+//å…±å­—èŠ‚
+//FF  AB ä¸ºå¤´   æ•°æ®é•¿åº¦ 71byte     ç»“å°¾ è¡¨ç¤ºporté•¿åº¦(0x04        Or  0x05)å’Œå‘½ä»¤
+//æ•°æ®ä¾æ¬¡ä¸º ip port(4byte) id serialnumber porté•¿åº¦ å‘½ä»¤
+//å½“porté•¿åº¦ä¸º4  å€’æ•°3byteä¸º0  	é•¿åº¦ä¸º5 å€’æ•°3byteä¸ºportç¬¬5byte
+//ç»“å°¾ä¸ºé…ç½®é€‰é¡¹ç›®
 void USART1_IRQHandler(void){
 	if (USART_GetITStatus(USART1,USART_IT_RXNE)!=RESET){
 		 usart_1_Buff[usart_1_buffIndex] = USART_ReceiveData(USART1);
 		 usart_1_buffIndex++;
+
+		 if(usart_1_buffIndex >= 253){
+		  usart_1_buffIndex=0;
+		 }
+	
 		
-		if(usart_1_buffIndex >= 250){
-			usart_1_buffIndex = 0;
-			memset(usart_1_Buff,0,254);
+#if 1
+		if( usart_1_buffIndex >=   71 ){
+			 
+			//åŒ¹é…åŒ…å¤´
+			 u8 i;
+			
+			if( (usart_1_Buff[usart_1_buffIndex-71] == 0XFF)    && 
+					(usart_1_Buff[usart_1_buffIndex-70] == 0XAB) ){
+				//åŒ¹é…ç»“å°¾   0x04 æˆ– 0x05
+				if(usart_1_Buff[usart_1_buffIndex-2] == 0x04 || usart_1_Buff[usart_1_buffIndex-2] == 0x05){
+					//æ¥å—å®Œæ¯•
+					
+					memcpy(flashConcifgBuff,&usart_1_Buff[usart_1_buffIndex-71],71);
+					flashConcifgBuff[71] = '\0';
+					usart_1_buffIndex = 0;
+
+					//for(i = 0; i < 71;i++){
+					//	printf(" 0X%02X ",flashConcifgBuff[i]);
+					//}
+					
+					SetIsReceiveGsmData(3);
+				}
+			}
 		}
-		
-		 //ÕÒ°üÎ²°Í
+#endif
+	#if 0	
+		 //æ‰¾åŒ…å°¾å·´
 		if( (usart_1_Buff[usart_1_buffIndex-1] == 0x04) && (usart_1_Buff[usart_1_buffIndex - 2] == 0x00) 
 					&& (usart_1_Buff[usart_1_buffIndex - 3] == 0x30) && (usart_1_Buff[usart_1_buffIndex - 4] == 0x30) ){
-			//ÅäÖÃFLASH²ÎÊı
+			//é…ç½®FLASHå‚æ•°
 			FLASH_Config(usart_1_Buff,usart_1_buffIndex-1);
 			SetFlashConfigFlag(1);
 		}
+	#endif				
 	}
 }
 

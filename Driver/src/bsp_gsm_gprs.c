@@ -442,3 +442,77 @@ uint8_t PostGPRS(void)
 	return GSM_TRUE;
 
 }
+
+
+//由于 部分AT指令执行的返回结果不是布尔值 而是数值变量
+//所以另写函数，获取数值变量
+static void gsm_query(char * cmd,char * returnValue,uint32_t waittime){
+	uint8_t len;
+	char *redata;
+	GSM_CLEAN_RX();                 //清空了接收缓冲区数据
+	GSM_TX(cmd);                    //发送命令
+    GSM_DELAY(waittime);                 //延时
+    
+	redata = GSM_RX(len);   //接收数据
+
+	*(redata+len) = '\0';
+	
+	if(len < 100){
+		strcpy(returnValue,redata);
+	}else{
+		strncpy(returnValue,redata,100);
+	}
+}
+
+extern u8  gsm_gprs_Get_SignalStrength(){
+	u8 i;
+	u8 SignalStrength = 0;
+	char data[100];
+	gsm_query("AT+CSQ\r",data, 100);
+	//printf("\r\n %s",data);
+	//data 格式  AT+CSQ +CSQ: 31,0  其中31表示RSSI 认为信号强度  0-99       0表示误码
+   //率，越小越好
+   //for 查找 ,
+   for (i = 0; i <100; ++i)
+   {
+   		if(data[i] == ','){
+			if(i >= 2 ){
+				SignalStrength = (data[i-2] - 48)*10 + data[i-1]-48;  
+				break;
+			}
+		}
+   }
+   
+   //printf("\r\n SignalStrength = %d",SignalStrength);
+	return SignalStrength;		
+
+	
+}
+
+
+extern void Restart_Device(void){
+	Delay_ms(1000);
+	gsm_gprs_link_close();	
+
+	
+	Delay_ms(100);
+	gsm_gprs_shut_close();
+
+	Delay_ms(5000);
+	 
+	//信号线拉低1.5s至3s关机
+    //超过3s重新开机	
+	GSM_PWRKEY_Open();
+	Delay_ms(1000);
+	Delay_ms(1000);
+	GSM_PWRKEY_Close();
+	 
+	Delay_ms(5000);
+	
+    __set_FAULTMASK(1);   /* 关闭所有中断*/  
+	NVIC_SystemReset();   /* 系统复位 */
+
+	
+		
+}
+

@@ -1,5 +1,6 @@
 #include "bsp_Flash.h"
 #include "stm32f10x_flash.h"
+#include "string.h"
 
 #define FLASH_SIZE 512          //所选MCU的FLASH容量大小(单位为K)
 
@@ -10,11 +11,10 @@
 #endif
 
 
-extern char * ip[15] ;
-extern char * port[5];
-extern char * deviceId[8];
-
-static char * serialNumber[20];
+char ip[15] ;
+char port[5];
+char deviceId[8];
+char serialNumber[20];
 
 
 //读取指定地址的半字(16位数据)
@@ -114,7 +114,7 @@ extern void FLASH_Check(){
 	
 }
 
-
+#if 0
 extern void FLASH_Config(u8 *buff,u8 length){
 	//当前版本  配置信息长度为 71byte port 为4byte 进行配置
 	//此设计不合理，应预留5byte作为port参数
@@ -172,8 +172,277 @@ extern void FLASH_Config(u8 *buff,u8 length){
 		}break;
 	}
 }
+#endif
 
 
+//此处定义IpConfig的FLASH地址
+#define  DeviceConfigAddr 0x0800F000 //(0x0800000+2*1024*30)
+
+/*
+ * char IP[15]
+ * char PORT[5]
+ * char ID[8]
+ * char  SerialNumber[20]
+ *  add char DeviceConfig[48] ->  uint16_t DeviceConfig[24]
+ * 先全部读出  修改  再写入  
+ * 写入过程会擦处原先的数据
+ */
+
+#if 0 //不考虑常规思维所造成的排序问题  存取一致情况下不必考虑
+//由于系统memcpy的内存顺序问题， 自己写一个吧
+static void STM_Memcpy_u16Tou8(u8 * dest, const u16 *src, size_t srcLength){
+	//不考虑段错误问题
+	u8 i;
+	for (i = 0; i < srcLength; i++)
+	{
+		u16 temp = src[i];  
+		dest[i*2] = (u8)((temp & 0xff00) >> 8);
+		dest[i*2+1] = (u8)((temp & 0x00ff));
+	}
+} 
+
+static void STM_Memcpy_u8To16(u16 * dest, const u8 *src, size_t destLength){
+	//不考虑段错误问题
+	u8 i;
+	for (i = 0; i < destLength; i++)
+	{
+		dest[i] = src[i*2] + src[i*2+1]*256;
+	}
+}
+
+#endif
+
+extern void FLASH_WriteDeviceAllConfig(char *ip,char * port,char * id,char * serialNumber){
+	uint16_t DeviceConfig[24];
+	char     DeviceConfig_Temp[48];	
+
+	memcpy(DeviceConfig_Temp,ip, 15);
+	memcpy(&DeviceConfig_Temp[15], port, 5);
+	memcpy(&DeviceConfig_Temp[20],id,8);
+	memcpy(&DeviceConfig_Temp[28],serialNumber,20);
+
+	memcpy(DeviceConfig, DeviceConfig_Temp,48);
+	FLASH_WriteMoreData(DeviceConfigAddr,DeviceConfig,24);
+}
+
+extern void FLASH_ReadDeviceAllConfig(char * ip,char * port,char * id,char * serialNumber){
+	uint16_t DeviceConfig[24];
+	char     DeviceConfig_Temp[48];	
+	
+	FLASH_ReadMoreData(DeviceConfigAddr, DeviceConfig, 24);
+	memcpy(DeviceConfig_Temp, DeviceConfig, 48);
+
+	memcpy(ip,DeviceConfig_Temp,15);
+	memcpy(port,&DeviceConfig_Temp[15],5);
+	memcpy(id,&DeviceConfig_Temp[20],8);
+	memcpy(serialNumber,&DeviceConfig_Temp[28],20);
+
+}
+
+
+
+
+
+extern void FLASH_WriteIpConfig(char *ip,char * port){
+	u8 i;
+	uint16_t DeviceConfig[24];
+	char     DeviceConfig_Temp[48];
+
+#if 1
+	FLASH_ReadMoreData(DeviceConfigAddr, DeviceConfig, 24);
+	memcpy(DeviceConfig_Temp, DeviceConfig, 48);
+
+	memcpy(DeviceConfig_Temp,ip, 15);
+	memcpy(&DeviceConfig_Temp[15], port, 5);
+
+	memcpy(DeviceConfig, DeviceConfig_Temp, 48);
+
+	FLASH_WriteMoreData(DeviceConfigAddr,DeviceConfig,24);
+#endif
+	
+#if 0
+	//read all 
+	FLASH_ReadMoreData(DeviceConfigAddr, DeviceConfig, 24);
+	 
+	STM_Memcpy_u16Tou8(DeviceConfig_Temp,DeviceConfig,24);
+	 
+
+	memcpy(DeviceConfig_Temp,ip, 15);
+	memcpy(&DeviceConfig_Temp[15], port, 5);
+	 
+
+	for(i = 0; i < 48;i++){
+		printf(" %c ",DeviceConfig_Temp[i]);
+	}
+
+	
+	FLASH_WriteMoreData(DeviceConfigAddr,DeviceConfig,24);
+
+	STM_Memcpy_u8To16(DeviceConfig,DeviceConfig_Temp,24);
+
+	
+	 
+#endif
+	
+#if 0	
+	FLASH_ReadMoreData(DeviceConfigAddr, DeviceConfig, 24);
+	memset(DeviceConfig_Temp, 0, 48);
+	STM_Memcpy_u16Tou8(DeviceConfig_Temp,DeviceConfig,24);
+	for(i = 0; i < 48;i++){
+		printf(" %d ",DeviceConfig_Temp[i]);
+	}
+	printf(" 6 "); 
+#endif	
+	
+}
+
+
+/****************************************
+@Function Name:       FLASH_ReadIpConfig
+@Function Description:  Read ip and port config  
+@Input Parameter:    None
+@Output Parameter   ip  port
+@Return Value: None
+****************************************/ 
+extern void FLASH_ReadIpConfig(char ** ip, char ** port){
+	uint16_t DeviceConfig[24];
+	char     DeviceConfig_Temp[48];
+
+	FLASH_ReadMoreData(DeviceConfigAddr, DeviceConfig, 24);
+	memcpy(DeviceConfig_Temp, DeviceConfig, 48);
+
+	memcpy(*ip,DeviceConfig_Temp,15);
+	memcpy(*port,&DeviceConfig_Temp[15],5);
+}
+
+
+extern void FLASH_WriteDeviceIdConfig(char * id){
+	uint16_t DeviceConfig[24];
+	char     DeviceConfig_Temp[48];
+	FLASH_ReadMoreData(DeviceConfigAddr, DeviceConfig, 24);
+	memcpy(DeviceConfig_Temp, DeviceConfig, 48);
+	memcpy(&DeviceConfig_Temp[20],id,8);
+	memcpy(DeviceConfig, DeviceConfig_Temp,48);
+	FLASH_WriteMoreData(DeviceConfigAddr,DeviceConfig,24);
+}
+
+extern void FLASH_ReadDeviceIdConfig(char ** id){
+	uint16_t DeviceConfig[24];
+	char     DeviceConfig_Temp[48];
+	FLASH_ReadMoreData(DeviceConfigAddr, DeviceConfig, 24);
+	memcpy(DeviceConfig_Temp, DeviceConfig, 48);
+	memcpy(*id,&DeviceConfig_Temp[20],8);
+}
+
+extern void FLASH_WriteDeviceSerialNumber(char * serialNumber){
+	uint16_t DeviceConfig[24];
+	char     DeviceConfig_Temp[48];
+	FLASH_ReadMoreData(DeviceConfigAddr, DeviceConfig, 24);
+	memcpy(DeviceConfig_Temp, DeviceConfig, 48);
+	memcpy(&DeviceConfig_Temp[28],serialNumber,20);
+	memcpy(DeviceConfig, DeviceConfig_Temp,48);
+	FLASH_WriteMoreData(DeviceConfigAddr,DeviceConfig,24);
+
+}
+extern void FLASH_ReadDeviceSerialNumber(char ** serialNumber){
+	uint16_t DeviceConfig[24];
+	char	 DeviceConfig_Temp[48];
+	FLASH_ReadMoreData(DeviceConfigAddr, DeviceConfig, 24);
+	memcpy(DeviceConfig_Temp, DeviceConfig, 48);
+	memcpy(*serialNumber,&DeviceConfig_Temp[28],8);
+}
+
+extern void FLASH_USART_ConfigDeviceParameter(char * usartBuff,u8 length){
+	//解析usartbuff中对应的数据
+	char ip[15];
+	char port[5];
+	char id[8];
+	char serialNumber[20];
+	 
+
+	//ip
+	memset(ip,'.',15);
+	ip[0] = usartBuff[2];
+	ip[1] = usartBuff[3];
+	ip[2] = usartBuff[4];
+
+	ip[4] = usartBuff[5];
+	ip[5] = usartBuff[6];
+	ip[6] = usartBuff[7];
+
+	ip[8] = usartBuff[8];
+	ip[9] = usartBuff[9];
+	ip[10] = usartBuff[10];
+
+	ip[12] = usartBuff[11];
+	ip[13] = usartBuff[12];
+	ip[14] = usartBuff[13];
+
+	 
+
+	//port
+	
+	port[0] =  usartBuff[14];
+	port[1] =  usartBuff[15];
+	port[2] =  usartBuff[16];
+	port[3] =  usartBuff[17];
+	port[4] =  usartBuff[68]; 
+
+	//id
+	memcpy(id,&usartBuff[18],8);
+
+	//serialNumber
+	memcpy(serialNumber,&usartBuff[26],20);
+	
+	 
+	//根据配置命令修改对应参数
+	switch(usartBuff[70]){
+		case 0x10:{
+	
+		}
+		break;
+
+		case 0x11:{
+
+		}
+		break;
+
+		case 0x12:{
+			//配置全参数
+			printf("\r\n 5555555555");
+			FLASH_WriteDeviceAllConfig(ip,port,id,serialNumber);
+		printf("\r\n 6666666666666");
+		}
+		break;
+			//配置ip
+		case 0x13:{
+			FLASH_WriteIpConfig(ip, port);
+		}
+		break;
+
+		case 0x14:{
+			//配置id
+			FLASH_WriteDeviceIdConfig(id);
+		}
+		break;
+
+		case 0x15:{
+		//配置序列号 serialnumber
+
+		}
+		break;
+
+		case 0x17:{
+			//打印参数
+		}
+		break;
+		
+		
+	}
+	
+	
+	
+}
 
 
 

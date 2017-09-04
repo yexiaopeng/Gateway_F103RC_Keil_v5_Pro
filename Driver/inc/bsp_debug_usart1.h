@@ -10,6 +10,10 @@
 
 #include "stm32f10x.h"
 
+extern  u8 usart_1_buffIndex;
+extern  u8 usart_1_Buff[254];
+
+extern char flashConcifgBuff[72];
 
 
 
@@ -37,6 +41,6 @@ extern void DEBUG_USART1_Init(void);
 extern void UART_PutChar(USART_TypeDef* USARTx, uint8_t Data);
 extern void UART_PutStr (USART_TypeDef* USARTx, uint8_t *str);
 
-extern void SetFlashConfigFlag(u8 flag);
-extern u8   GetFlashConfigFlag();
+//extern void SetFlashConfigFlag(u8 flag);
+//extern u8   GetFlashConfigFlag();
 #endif /* BSP_BSP_DEBUG_USART1_H_ */

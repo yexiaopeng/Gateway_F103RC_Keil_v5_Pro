@@ -1,7 +1,8 @@
 #include "bsp_Timer.h"
 
 u8 isNetWork;//判断程序是否在处理网络应答 
-volatile u32  sec=0;//定时器计数
+volatile u32  sec=0;//定时器计数 用于心跳包
+volatile u32  sec_2=0;//定时器计数 用于采集器状态
 
 /*******************************************************************************
 * 函数名  : Timer2_Init_Config
@@ -42,17 +43,33 @@ void TIM2_IRQHandler(){
 	TIM_ClearITPendingBit(TIM2, TIM_IT_Update); 
 
 	sec++;
-    
-	if(60 == sec){
+	sec_2++;
+
+
+	//发送采集器数据包时，屏蔽心跳包
+	if(60 == sec_2 ){
+		sec_2 = 0;
+		sec = 0;
+		if(0 == isNetWork){
+			//发送心跳包
+			SetIsReceiveGsmData(4);
+		}
+		//发送采集器数据包
+		
+			
+	}
+
+
+
+	//60s 一次心跳包
+	if(30 == sec){
 		sec = 0;
          printf("\r\n 发心跳包 \r\n ");
 		//TODO 假设当前未处理网络应答 则发心跳包
 		if(0 == isNetWork){
 			//发送心跳包
 			SetIsReceiveGsmData(2);
-		}//else  不发送
-		
-	
+		}//else  不发送		
 	}
 
 	

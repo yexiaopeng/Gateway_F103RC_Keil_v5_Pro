@@ -27,7 +27,6 @@ extern  uint8_t     gsm_cmd         	(char *cmd, char *reply,uint32_t waittime )
 extern  uint8_t     gsm_cmd_check   	(char *reply);
 
 /***********************************GPRS 开关机  ***********************************************/
-//电源
 #define GSM_POWER_GPIO_ClockCmd                	  RCC_APB2PeriphClockCmd
 #define GSM_POWER_GPIO_PORT                      GPIOA
 #define GSM_POWER_GPIO_PIN                       GPIO_Pin_0
@@ -51,6 +50,15 @@ extern void GSM_PWRKEY_Close(void);
 
 
 
+
+
+
+
+
+
+
+
+
 /***********************************************************************************************/
 #define     GSM_CLEAN_RX()              clean_rebuff()
 #define     gsm_ate0()                  gsm_cmd("ATE0\r","OK",100)              //关闭回显
@@ -62,7 +70,7 @@ extern void GSM_PWRKEY_Close(void);
 
 
 
-/*************************** GPRS 功能 ***************************/
+/*************************** GPRS TCP***************************/
 uint8_t 	gsm_gprs_init		(void);																//GPRS初始化环境
 uint8_t gsm_gprs_tcp_link	(char *localport,char * serverip,char * serverport);				//TCP连接
 uint8_t gsm_gprs_udp_link	(char *localport,char * serverip,char * serverport);				//UDP连接
@@ -71,9 +79,25 @@ uint8_t gsm_gprs_link_close	(void);              												//IP链接断开
 uint8_t gsm_gprs_shut_close	(void);               												//关闭场景
 uint8_t	PostGPRS(void);
 
+/*************************************************************/
 
 
-/*调试用串口*/
+
+
+/************************************************************/
+
+
+
+
+
+
+extern u8  gsm_gprs_Get_SignalStrength();
+
+
+extern void Restart_Device(void);
+
+
+/*寮�鍏虫満*/
 
 #define GSM_DEBUG_ON         	0
 #define GSM_DEBUG_ARRAY_ON    0
